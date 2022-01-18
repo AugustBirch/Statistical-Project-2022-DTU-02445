@@ -1,0 +1,468 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+Visualize experiment:
+
+```{r}
+library(rgl)
+
+start_cyl <- cylinder3d(cbind(0, 0, seq(0, 10, length = 10)), radius = c(3,3,3), sides = 20, closed = -2)
+target_cyl <- cylinder3d(cbind(60, 0, seq(0, 10, length = 10)), radius = c(3,3,3), sides = 20, closed = -2)
+cyl1 <- cylinder3d(cbind(0, 0, 10 + seq(0, 12.5, length = 10)), radius = c(3,3,3), sides = 20, closed = -2)
+cyl2 <- cylinder3d(cbind(60, 0, 10 + seq(0, 12.5, length = 10)), radius = c(3,3,3), sides = 20, closed = -2)
+cyl3 <- cylinder3d(cbind(30, 0, seq(0, 20, length = 10)), radius = c(3,3,3), sides = 10, closed = -2)
+shade3d(addNormals(subdivision3d(start_cyl)), col = "darkgreen")
+shade3d(addNormals(subdivision3d(target_cyl)), col = "darkgreen")
+shade3d(addNormals(subdivision3d(cyl1)), col = "pink")
+shade3d(addNormals(subdivision3d(cyl2)), col = "pink", alpha = 0.5)
+shade3d(addNormals(subdivision3d(cyl3)), col = "lightblue")
+surface3d(c(-7, 67), c(-20, 20), matrix(0, 2, 2), col = "black", alpha = 0.9, specular = "black")
+
+
+colors <- c("blue", "red","yellow", "orange", "purple", "cyan", "brown", "green", "magenta", "salmon")
+
+for (j in 1:10){
+    for (i in 1:10){
+    lines3d(armdata[[7]][[j]][[i]], col = colors[j])
+  }
+}
+```
+
+
+#1. Assess if there is a significant effect of person on the observed trajectories.
+
+• First layer: Experiments.
+• Second layer: Persons. 
+• Third layer: Repetitions.
+
+Format data into DF
+
+```{r}
+data <- as.data.frame(do.call(cbind, armdata))
+
+data_col <- c()
+for (person in 1:10){
+  for (setup in 1:16){
+    for (repetition in 1:10){
+      data_col <- rbind(data_col,data[[setup]][[person]][[repetition]])
+    }
+  }
+}
+
+times <- rep(1:100,1600)
+
+repetitions <- c()
+for (k in 1:10){
+  for (j in 1:16){
+    for (i in 1:10){
+      repetitions <- c(repetitions,rep(i, 100))
+    }
+  }
+}
+repetitions <- as.factor(repetitions)
+
+setups <- c()
+for (j in 1:10){
+  for (i in 1:16){
+    setups <- c(setups,rep(i,1000))
+  }
+}
+setups <- as.factor(setups)
+
+persons <- c()
+for (j in 1: 10){
+  persons <- c(persons, rep(j,16000))
+}
+persons <- as.factor(persons)
+
+df <- data.frame(x = data_col[,1], y = data_col[,2], z = data_col[,3], time = as.factor(times),repetition = repetitions, setup = setups, person = persons)
+
+length(df$x)
+#df <- na.omit(df)
+# length(df$x)
+
+
+
+
+shitrows <- c(132001,134101,137001, 137002, 138001, 138002, 140001, 140002, 140003, 140004, 141101, 141102)
+df[shitrows,]$x <- df[shitrows+1,]$x
+df[shitrows,]$y <- df[shitrows+1,]$y
+df[shitrows,]$z <- df[shitrows+1,]$z
+
+shitrows <- c(137001, 138001, 140001, 140002, 140003, 141101)
+df[shitrows,]$x <- df[shitrows+1,]$x
+df[shitrows,]$y <- df[shitrows+1,]$y
+df[shitrows,]$z <- df[shitrows+1,]$z
+
+shitrows <- c(140001, 140002)
+df[shitrows,]$x <- df[shitrows+1,]$x
+df[shitrows,]$y <- df[shitrows+1,]$y
+df[shitrows,]$z <- df[shitrows+1,]$z
+
+shitrows <- c(140001)
+df[shitrows,]$x <- df[shitrows+1,]$x
+df[shitrows,]$y <- df[shitrows+1,]$y
+df[shitrows,]$z <- df[shitrows+1,]$z
+
+head(df)
+length(df$x)
+```
+```{r}
+#boxplot til z
+boxplot(df$z ~ df$setup, 
+        main = "", xlab="Setup",ylab="Z-coordinate",
+        cex.main = 1.8, cex.lab = 1.2,
+        col=brewer.pal(n = 10, name = "Dark2"))
+```
+```{r}
+
+```
+
+
+Fjerner outlier
+```{r}
+#dfoutlier = df[(df$person == 2) & (df$repetition != 7) & (df$setup == 5),]
+#install.packages("RColorBrewer")
+library("RColorBrewer")
+
+for (i in 1:100){
+  df[(df$person == 2) & (df$repetition == 7) & (df$setup == 5) & (df$time ==i),]$x = mean(df[(df$person == 2) & (df$repetition != 7) & (df$setup == 5) & (df$time ==i),]$x)
+  
+  df[(df$person == 2) & (df$repetition == 7) & (df$setup == 5) & (df$time ==i),]$y = mean(df[(df$person == 2) & (df$repetition != 7) & (df$setup == 5) & (df$time ==i),]$y)
+  
+  df[(df$person == 2) & (df$repetition == 7) & (df$setup == 5) & (df$time ==i),]$z = mean(df[(df$person == 2) & (df$repetition != 7) & (df$setup == 5) & (df$time ==i),]$z)
+}
+
+
+boxplot(df$z ~ df$person, 
+        #main = "", xlab="Person",ylab="Z-coordinate",
+        #cex.main = 1.8, cex.lab = 1.2,
+        #col=brewer.pal(n = 10, name = "Dark2"))
+
+```
+
+Save to excel
+```{r}
+#write.csv(df,"armdatadf.csv", row.names = T)
+```
+
+Data exploration / description
+```{r}
+
+boxplot(df$y ~ df$person, 
+        main = "Y-coordinate as a function of person", xlab="Person",ylab="Y-coordinate",
+        cex.main = 2, cex.lab = 2,
+        col=brewer.pal(n = 10, name = "Dark2"))
+boxplot(df$y ~ df$setup)
+
+boxplot(df$x, df$y, df$z)
+
+summary(df$z)
+summary(df$y)
+summary(df$x)
+
+
+```
+Boxplot X-Y-Z coordinater med person
+```{r}
+
+boxplot(df$x ~ df$person, 
+        main = "", xlab="Person",ylab="X-coordinate",
+        cex.main = 1.8, cex.lab = 1.2,
+        col=brewer.pal(n = 10, name = "Dark2"))
+boxplot(df$y ~ df$person, 
+        main = "", xlab="Person",ylab="Y-coordinate",
+        cex.main = 1.8, cex.lab = 1.2,
+        col=brewer.pal(n = 10, name = "Dark2"))
+boxplot(df$z ~ df$person, 
+        main = "", xlab="Person",ylab="Z-coordinate",
+        cex.main = 1.8, cex.lab = 1.2,
+        col=brewer.pal(n = 10, name = "Dark2"))
+```
+
+lave boxplot med setup istedet for persons - stadig med x y og z
+```{r}
+boxplot(df$x ~ df$setup, 
+        main = "", xlab="Setup",ylab="X-coordinate",
+        cex.main = 1.8, cex.lab = 1.2,
+        col=brewer.pal(n = 10, name = "Dark2"))
+boxplot(df$y ~ df$setup, 
+        main = "", xlab="Setup",ylab="Y-coordinate",
+        cex.main = 1.8, cex.lab = 1.2,
+        col=brewer.pal(n = 10, name = "Dark2"))
+boxplot(df$z ~ df$setup, 
+        main = "", xlab="Setup",ylab="Z-coordinate",
+        cex.main = 1.8, cex.lab = 1.2,
+        col=brewer.pal(n = 10, name = "Dark2"))
+```
+En helt anden funktion med xyz, sqrt(dfx^2+dfy^2+dfz^2)
+Vurdere længde udfra person og setup
+
+```{r}
+#tilføjer til dataframe
+#normalisere x,y,z. 
+#scale(x,center=True,scale=True)
+
+df$len = sqrt(scale(df$x,center = TRUE, scale = TRUE)^2+scale(df$y,center = TRUE, scale = TRUE)^2+scale(df$z,center = TRUE, scale = TRUE)^2)
+
+```
+
+```{r}
+
+boxplot(df$len ~ df$person,
+        main = "", xlab="Person",ylab="Euclidean distance",
+        cex.main = 1.8, cex.lab = 1.2,
+        col=brewer.pal(n = 10, name = "Dark2"))
+boxplot(df$len ~ df$setup,
+        main = "", xlab="Setup",ylab="Euclidean distance",
+        cex.main = 1.8, cex.lab = 1.2,
+        col=brewer.pal(n = 10, name = "Dark2"))
+
+```
+P-værdier - euclid
+```{r}
+pvalseuclid <- rep(NA, 1600)
+
+i = 1
+
+for (t in 1:100){
+  for (s in 1:16){
+    df_local <- subset(df, time==t & setup == s)
+    L <- lm(len ~ person, data = df_local)
+    pvalseuclid[i] <- anova(L)$"Pr(>F)"[1]
+    
+    i = i+1
+  }
+}
+```
+p-adjusted - euclid
+```{r}
+pvalseuclid.adjusted <- p.adjust(pvalseuclid, method ="BH")
+
+mean(pvalseuclid.adjusted<0.01)#1%
+mean(pvalseuclid.adjusted<0.05)#5%
+mean(pvalseuclid.adjusted<0.10)#10%
+
+plot(sort(pvalseuclid.adjusted),xlab = "", ylab = "P-value", main= "P-values for significance of person, when predicting X-value")
+abline(h = 0.05, col = "red")
+legend("topleft", inset=0.1, fill=c("black","red"), legend = c("Sorted p-values", "0.05"))
+
+hist(pvalseuclid.adjusted, breaks = 50)
+abline(v = 0.05, col = "red")
+
+```
+
+
+Anovas
+```{r}
+pvalsx <- rep(NA, 1600)
+pvalsy <- rep(NA, 1600)
+pvalsz <- rep(NA, 1600)
+i = 1
+
+for (t in 1:100){
+  for (s in 1:16){
+    df_local <- subset(df, time==t & setup == s)
+    L <- lm(x ~ person, data = df_local)
+    pvalsx[i] <- anova(L)$"Pr(>F)"[1]
+    
+    L <- lm(y ~ person, data = df_local)
+    pvalsy[i] <- anova(L)$"Pr(>F)"[1]
+    
+    L <- lm(z ~ person, data = df_local)
+    pvalsz[i] <- anova(L)$"Pr(>F)"[1]
+    i = i+1
+  }
+}
+
+```
+
+QQ plots for persons:
+```{r}
+for (i in 1:5){
+  t <- sample(1:100,1)
+  s <- sample(1:16,1)
+  df_local <- subset(df, time==t & setup == s)
+  Lx <- lm(x ~ person, data = df_local)
+  Ly <- lm(y ~ person, data = df_local)
+  Lz <- lm(z ~ person, data = df_local)
+  
+  plot(Lx, which = 2, main =sprintf("Time: %s, Setup: %s, X-coordinates",t,s),cex.main = 1)
+  
+  plot(Ly, which = 2, main =sprintf("Time: %s, Setup: %s",t,s),cex.main = 1)
+  
+  plot(Lz, which = 2, main =sprintf("Time: %s, Setup: %s",t,s),cex.main = 1)
+}
+
+
+```
+
+QQ plots for setup
+```{r}
+for (i in 1:10){
+  t <- sample(1:100,1)
+  p <- sample(1:10,1)
+  df_local <- subset(df, time==89 & person == 9)
+  Lx <- lm(x ~ setup, data = df_local)
+  Ly <- lm(y ~ setup, data = df_local)
+  Lz <- lm(z ~ setup, data = df_local)
+  
+  plot(Lx, which = 2, main =sprintf("Time: %s, Person: %s,",t,p),cex.main = 1)
+  
+  plot(Ly, which = 2, main =sprintf("Time: %s, Person: %s,",t,p),cex.main = 1)
+  
+  plot(Lz, which = 2, main =sprintf("Time: %s, Person: %s,",t,p),cex.main = 1)
+}
+```
+Residual plots
+```{r}
+for (i in 1:10){
+  t <- sample(1:100,1)
+  p <- sample(1:10,1)
+  df_local <- subset(df, time==t & person == p)
+  Lx <- lm(x ~ setup, data = df_local)
+  Ly <- lm(y ~ setup, data = df_local)
+  Lz <- lm(z ~ setup, data = df_local)
+  
+  plot(Lx, which = 1,main =sprintf("Time: %s, Person: %s,",t,p),cex.main = 1)
+  
+  plot(Ly, which = 1, main =sprintf("Time: %s, Person: %s,",t,p),cex.main = 1)
+  
+  plot(Lz, which = 1, main =sprintf("Time: %s, Person: %s,",t,p),cex.main = 1)
+}
+```
+
+
+Adjusted p-values
+```{r}
+pvalsx.adjusted <- p.adjust(pvalsx, method ="BH")
+pvalsy.adjusted <- p.adjust(pvalsy, method ="BH")
+pvalsz.adjusted <- p.adjust(pvalsz, method ="BH")
+
+mean(pvalsx.adjusted<0.01)#1%
+mean(pvalsx.adjusted<0.05)#5%
+mean(pvalsx.adjusted<0.10)#10%
+
+mean(pvalsy.adjusted<0.01)#1%
+mean(pvalsy.adjusted<0.05)#5%
+mean(pvalsy.adjusted<0.10)#10%
+
+mean(pvalsz.adjusted<0.01)#1%
+mean(pvalsz.adjusted<0.05)#5%
+mean(pvalsz.adjusted<0.10)#10%
+
+plot(sort(pvalsz.adjusted),xlab = "", ylab = "P-value", main= "P-values for significance of person, when predicting Z-value")
+abline(h = 0.05, col = "red")
+legend("topleft", inset=0.1, fill=c("black","red"), legend = c("Sorted p-values", "0.05"))
+
+plot(sort(pvalsy.adjusted),xlab = "", ylab = "P-value", main= "P-values for significance of person, when predicting Y-value")
+abline(h = 0.05, col = "red")
+legend("topleft", inset=0.1, fill=c("black","red"), legend = c("Sorted p-values", "0.05"))
+
+
+plot(sort(pvalsx.adjusted),xlab = "", ylab = "P-value", main= "P-values for significance of person, when predicting X-value")
+abline(h = 0.05, col = "red")
+legend("topleft", inset=0.1, fill=c("black","red"), legend = c("Sorted p-values", "0.05"))
+
+hist(pvalsx.adjusted, breaks = 50)
+abline(v = 0.05, col = "red")
+
+hist(pvalsy.adjusted, breaks = 50)
+abline(v = 0.05, col = "red")
+
+hist(pvalsz.adjusted, breaks = 50)
+abline(v = 0.05, col = "red")
+```
+
+
+```{r}
+pvalsx <- rep(NA, 1000)
+pvalsy <- rep(NA, 1000)
+pvalsz <- rep(NA, 1000)
+i = 1
+
+for (t in 1:100){
+  for (p in 1:10){
+    df_local <- subset(df, time==t & person == p)
+    L <- lm(x ~ setup, data = df_local)
+    pvalsx[i] <- anova(L)$"Pr(>F)"[1]
+    
+    L <- lm(y ~ setup, data = df_local)
+    pvalsy[i] <- anova(L)$"Pr(>F)"[1]
+    
+    L <- lm(z ~ setup, data = df_local)
+    pvalsz[i] <- anova(L)$"Pr(>F)"[1]
+    i = i+1
+  }
+}
+
+```
+
+
+```{r}
+pvalsx.adjusted <- p.adjust(pvalsx, method ="BH")
+pvalsy.adjusted <- p.adjust(pvalsy, method ="BH")
+pvalsz.adjusted <- p.adjust(pvalsz, method ="BH")
+
+mean(pvalsx.adjusted<0.01)#1%
+mean(pvalsx.adjusted<0.05)#5%
+mean(pvalsx.adjusted<0.10)#10%
+
+mean(pvalsy.adjusted<0.01)#1%
+mean(pvalsy.adjusted<0.05)#5%
+mean(pvalsy.adjusted<0.10)#10%
+
+mean(pvalsz.adjusted<0.01)#1%
+mean(pvalsz.adjusted<0.05)#5%
+mean(pvalsz.adjusted<0.10)#10%
+
+plot(sort(pvalsz.adjusted),xlab = "", ylab = "P-value", main= "P-values for significance of setup, when predicting Z-value")
+abline(h = 0.05, col = "red")
+legend("topleft", inset=0.1, fill=c("black","red"), legend = c("Sorted p-values", "0.05"))
+
+plot(sort(pvalsy.adjusted),xlab = "", ylab = "P-value", main= "P-values for significance of setup, when predicting Y-value")
+abline(h = 0.05, col = "red")
+legend("topleft", inset=0.1, fill=c("black","red"), legend = c("Sorted p-values", "0.05"))
+
+
+plot(sort(pvalsx.adjusted),xlab = "", ylab = "P-value", main= "P-values for significance of setup, when predicting X-value")
+abline(h = 0.05, col = "red")
+legend("topleft", inset=0.1, fill=c("black","red"), legend = c("Sorted p-values", "0.05"))
+
+hist(pvalsx.adjusted, breaks = 50)
+abline(v = 0.05, col = "red")
+
+hist(pvalsy.adjusted, breaks = 50)
+abline(v = 0.05, col = "red")
+
+hist(pvalsz.adjusted, breaks = 50)
+abline(v = 0.05, col = "red")
+```
+
+
+
+
+
+
+Interaction plots
+```{r}
+df_local <- subset(df)
+
+interaction.plot(df_local$setup, df_local$person, df_local$y, col = c("blue", "red","yellow", "orange", "purple", "cyan", "brown", "green", "magenta", "salmon"), lty=1, main = "y as function of person / setup")
+
+interaction.plot(df_local$setup, df_local$person, df_local$x, col = c("blue", "red","yellow", "orange", "purple", "cyan", "brown", "green", "magenta", "salmon"), lty=1, main = "x as function of person / setup")
+
+interaction.plot(df_local$setup, df_local$person, df_local$z, col = c("blue", "red","yellow", "orange", "purple", "cyan", "brown", "green", "magenta", "salmon"), lty=1, main = "z as function of person / setup")
+
+interaction.plot(df_local$person, df_local$setup, df_local$z, col = c("blue", "red","yellow", "orange", "purple", "cyan", "brown", "green", "magenta", "salmon"), lty=1, main = "z as function of setup / person")
+
+interaction.plot(df_local$person, df_local$setup, df_local$y, col = c("blue", "red","yellow", "orange", "purple", "cyan", "brown", "green", "magenta", "salmon"), lty=1, main = "y as function of setup / person")
+
+interaction.plot(df_local$person, df_local$setup, df_local$x, col = c("blue", "red","yellow", "orange", "purple", "cyan", "brown", "green", "magenta", "salmon"), lty=1, main = "x as function of setup / person")
+
+```
+

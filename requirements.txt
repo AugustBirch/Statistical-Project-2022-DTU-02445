@@ -1,0 +1,5 @@
+
+dtaidistance==2.3.4
+pydot
+openpyxl==3.0.9
+statsmodels==0.13.1
